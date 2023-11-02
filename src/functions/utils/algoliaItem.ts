@@ -10,6 +10,11 @@ export type AlgoliaItem = Readonly<{
   slug: string;
   collection: string;
   content: readonly ContentBlock[];
+  lastModified: string;
+  includeInSearch: string;
+  insightCategory?: string;
+  experts?: any;
+  lastNameStartsWith?: string;
 }>;
 
 type ContentBlock = Readonly<{
@@ -29,7 +34,7 @@ export const canConvertToAlgoliaItem = (expectedSlug: string) => (item: IContent
 const createObjectId = (itemCodename: string, languageCodename: string) => `${itemCodename}_${languageCodename}`;
 
 export const convertToAlgoliaItem =
-  (allItems: ReadonlyMap<string, IContentItem>, expectedSlug: string) => (item: IContentItem): AlgoliaItem => ({
+  (allItems: ReadonlyMap<string, IContentItem>, expectedSlug: string) => (item: any): AlgoliaItem => ({
     id: item.system.id,
     type: item.system.type,
     codename: item.system.codename,
@@ -37,8 +42,12 @@ export const convertToAlgoliaItem =
     name: item.system.name,
     language: item.system.language,
     objectID: createObjectId(item.system.codename, item.system.language),
-    slug: Object.values(item.elements).find(el => el.type === ElementType.UrlSlug)?.value ?? "",
+    slug: item.elements.page_fields__slug.value,
     content: createRecordBlock(allItems, [], expectedSlug)(item),
+    lastModified: item.system.lastModified,
+    includeInSearch: item.elements.page_fields__include_in_search.value[0].name,
+    ...(item.system.type === "insight" ? { insightCategory: item.elements.insight_category.value[0].name, experts: item.elements.authors.linkedItems.map((expert: any) => (expert.elements.full_name.value)) } : {}),
+    ...(item.system.type === "expert" ? { lastNameStartsWith: item.elements.last_name.value[0] ? item.elements.last_name.value[0] : "", headshot: item.elements.headshot.value[0].url, title: item.elements.title.value } : {})
   });
 
 const createRecordBlock =
